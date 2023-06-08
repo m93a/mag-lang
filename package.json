@@ -1,0 +1,12 @@
+{
+  "name": "mag",
+  "version": "0.0.0",
+  "description": "The Mag programming language",
+  "scripts": {
+    "build": "deno run --allow-read --allow-write src/generateParser.ts",
+    "run": "deno run src/parse.ts"
+  },
+  "keywords": [],
+  "author": "Michal Grňo",
+  "license": "MIT"
+}
