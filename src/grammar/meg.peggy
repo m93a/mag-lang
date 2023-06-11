@@ -115,6 +115,9 @@ Keyword
 
 // ----- Tokens -----
 
+ReservedWord
+  = Keyword
+
 IdentifierName "identifier"
   = head:IdentifierStart tail:IdentifierPart* {
       return {
@@ -125,6 +128,118 @@ IdentifierName "identifier"
 
 Identifier
   = !ReservedWord name:IdentifierName { return name; }
+
+BooleanLiteral
+  = TrueToken  { return { type: "Literal", value: true  }; }
+  / FalseToken { return { type: "Literal", value: false }; }
+
+BinaryDigit
+  = [0-1]
+
+OctalDigit
+  = [0-7]
+
+DecimalDigit
+  = [0-9]
+
+DecimalNonZeroDigit
+  = [1-9]
+
+HexDigit
+  = [0-9a-f]i
+
+NumericSeparator
+  = "_"
+
+AnyBinaryDigits
+  = (NumericSeparator? BinaryDigit)*
+
+AnyOctalDigits
+  = (NumericSeparator? OctalDigit)*
+
+AnyDecimalDigits
+  = (NumericSeparator? DecimalDigit)*
+
+AnyHexDigits
+  = (NumericSeparator? HexDigit)*
+
+DecimalIntegerLiteral
+  = "0"
+  / DecimalNonZeroDigit AnyDecimalDigits
+
+DecimalSignedInteger
+  = [+-]? DecimalDigit AnyDecimalDigits
+
+ExponentIndicator
+  = "e"i
+
+DecimalExponentPart
+  = ExponentIndicator DecimalSignedInteger
+
+NumericLiteral
+  = [+-]? DecimalIntegerLiteral ("." AnyDecimalDigits)? DecimalExponentPart? {
+    return { type: "Literal", type: "number", value: text(), base: 10 };
+  }
+  / [+-]? "." DecimalDigit AnyDecimalDigits DecimalExponentPart? {
+    return { type: "Literal", type: "number", value: text(), base: 10 };
+  }
+  / [+-]? "0b" AnyBinaryDigits ("." AnyBinaryDigits)? {
+    return { type: "Literal", type: "number", value: text(), base: 2 };
+  }
+  / [+-]? "0b" "." AnyBinaryDigits {
+    return { type: "Literal", type: "number", value: text(), base: 2 };
+  }
+  / [+-]? "0o" AnyOctalDigits ("." AnyOctalDigits)? {
+    return { type: "Literal", type: "number", value: text(), base: 8 };
+  }
+  / [+-]? "0o" "." AnyOctalDigits {
+    return { type: "Literal", type: "number", value: text(), base: 8 };
+  }
+  / [+-]? "0x" AnyHexDigits ("." AnyHexDigits)? {
+    return { type: "Literal", type: "number", value: text(), base: 16 };
+  }
+  / [+-]? "0x" "." AnyHexDigits {
+    return { type: "Literal", type: "number", value: text(), base: 16 };
+  }
+
+RegularExpressionBody
+= RegularExpressionFirstChar RegularExpressionChar*
+
+RegularExpressionFirstChar
+  = ![*\\/[] RegularExpressionNonTerminator
+  / RegularExpressionBackslashSequence
+  / RegularExpressionClass
+
+RegularExpressionChar
+  = ![\\/[] RegularExpressionNonTerminator
+  / RegularExpressionBackslashSequence
+  / RegularExpressionClass
+
+RegularExpressionBackslashSequence
+  = "\\" RegularExpressionNonTerminator
+
+RegularExpressionNonTerminator
+  = !LineTerminator .
+
+RegularExpressionClass
+  = "[" RegularExpressionClassChar* "]"
+
+RegularExpressionClassChar
+  = ![\]\\] RegularExpressionNonTerminator
+  / RegularExpressionBackslashSequence
+
+RegularExpressionFlags
+  = IdentifierPart*
+
+RegularExpressionLiteral
+  = "/" pattern:$RegularExpressionBody "/" flags:$RegularExpressionFlags {
+      return { type: "Literal", type: "regex", value: pattern, flags: flags };
+    }
+
+Literal
+  = BooleanLiteral
+  / NumericLiteral
+  / RegularExpressionLiteral
 
 
 // ----- Unicode Character Categories -----
