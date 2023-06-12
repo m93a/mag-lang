@@ -82,6 +82,7 @@ TrueToken       = "true"            !IdentifierPart
 TypeofToken     = "typeof"          !IdentifierPart
 VoidToken       = "void"            !IdentifierPart
 YieldToken      = "yield"           !IdentifierPart
+UnderscoreToken = "_"               !IdentifierPart
 
 Keyword
   = BreakToken
@@ -112,6 +113,7 @@ Keyword
   / TypeofToken
   / VoidToken
   / YieldToken
+  / UnderscoreToken
 
 // ----- Tokens -----
 
@@ -130,8 +132,8 @@ Identifier
   = !ReservedWord name:IdentifierName { return name; }
 
 BooleanLiteral
-  = TrueToken  { return { type: "Literal", value: true  }; }
-  / FalseToken { return { type: "Literal", value: false }; }
+  = TrueToken  { return { type: "Literal", type: "boolean", value: true  }; }
+  / FalseToken { return { type: "Literal", type: "boolean", value: false }; }
 
 BinaryDigit
   = [0-1]
@@ -202,8 +204,69 @@ NumericLiteral
     return { type: "Literal", type: "number", value: text(), base: 16 };
   }
 
+SingleEscapeCharacter
+  = "'"
+  / '"'
+  / "\\"
+  / "b"  { return "\b"; }
+  / "f"  { return "\f"; }
+  / "n"  { return "\n"; }
+  / "r"  { return "\r"; }
+  / "t"  { return "\t"; }
+  / "v"  { return "\v"; }
+
+EscapeCharacter
+  = SingleEscapeCharacter
+  / DecimalDigit
+  / "x"
+  / "u"
+
+NonEscapeCharacter
+  = !(EscapeCharacter / LineTerminator) . { return text(); }
+
+CharacterEscapeSequence
+  = SingleEscapeCharacter
+  / NonEscapeCharacter
+
+HexEscapeSequence
+  = "x" digits:$(HexDigit HexDigit) {
+    return String.fromCharCode(parseInt(digits, 16));
+  }
+
+UnicodeEscapeSequence
+  = "u" digits:$(HexDigit HexDigit HexDigit HexDigit) {
+    return String.fromCharCode(parseInt(digits, 16));
+  }
+
+EscapeSequence
+  = CharacterEscapeSequence
+  / "0" !DecimalDigit { return "\0"; }
+  / HexEscapeSequence
+  / UnicodeEscapeSequence
+
+LineContinuation
+  = "\\" LineTerminatorSequence { return ""; }
+
+DoubleStringCharacter
+  = !('"' / "\\" / LineTerminator) . { return text(); }
+  / "\\" sequence:EscapeSequence { return sequence; }
+  / LineContinuation
+
+SingleStringCharacter
+  = !("'" / "\\" / LineTerminator) . { return text(); }
+  / "\\" sequence:EscapeSequence { return sequence; }
+  / LineContinuation
+
+StringLiteral "string"
+  = '"' chars:DoubleStringCharacter* '"' {
+    return { type: "Literal", type: "string", value: chars.join("") };
+  }
+  / "'" chars:SingleStringCharacter* "'" {
+    return { type: "Literal", type: "string", value: chars.join("") };
+  }
+
 RegularExpressionBody
-= RegularExpressionFirstChar RegularExpressionChar*
+  = RegularExpressionFirstChar RegularExpressionChar*
 
 RegularExpressionFirstChar
   = ![*\\/[] RegularExpressionNonTerminator
@@ -239,6 +302,7 @@ RegularExpressionLiteral
 Literal
   = BooleanLiteral
   / NumericLiteral
+  / StringLiteral
   / RegularExpressionLiteral
 
 
