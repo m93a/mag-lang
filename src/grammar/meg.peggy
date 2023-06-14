@@ -347,7 +347,7 @@ Literal
 
 Expression
   // = AssignmentExpression
-  = ExplicitCallExpression // FIXME
+  = ImplicitCallExpression // FIXME
 
 // TypeExpression
 //   = ConditionalExpression
@@ -397,6 +397,16 @@ ExplicitCallExpression
       head
     );
   }
+
+
+// --- Implicit Call ---
+
+ImplicitCallExpression
+  = callee:ExplicitCallExpression _ arg:ImplicitCallExpression {
+    return { type: "CallExpression", implicit: true, callee, arguments: [arg] }
+  }
+  / ExplicitCallExpression
+
 
 // ----- Unicode Character Categories -----
 
