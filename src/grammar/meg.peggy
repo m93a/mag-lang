@@ -1,6 +1,7 @@
 
 Start
-  = _ program:Program _ { return program; }
+  // = _ program:Program _ { return program; }
+  = _ program:Expression _ { return program; } // FIXME
 
 
 // ----- Lexical grammar -----
@@ -38,10 +39,7 @@ IdentifierPart
 
 // ----- Trivia -----
 
-_
-  = WhiteSpace
-
-Comment "comment"
+Comment
   = MultiLineComment
   / SingleLineComment
 
@@ -51,9 +49,13 @@ MultiLineComment
 SingleLineComment
   = "//" (!LineTerminator .)*
 
+_
+  = (WhiteSpace / Comment)*
+
 
 // ----- Keywords -----
 
+AndToken        = "and"             !IdentifierPart
 BreakToken      = "break"           !IdentifierPart
 ConstToken      = "const"           !IdentifierPart
 ContinueToken   = "continue"        !IdentifierPart
@@ -66,12 +68,13 @@ ForToken        = "for"             !IdentifierPart
 FunctionToken   = "fn" / "function" !IdentifierPart
 IfToken         = "if"              !IdentifierPart
 ImportToken     = "import"          !IdentifierPart
-InterfaceToken  = "interface"       !IdentifierPart
 MatchToken      = "match"           !IdentifierPart
 MutToken        = "mut"             !IdentifierPart
-NewToken        = "new"             !IdentifierPart
 OfToken         = "of"              !IdentifierPart
+OrToken         = "or"              !IdentifierPart
 ReturnToken     = "return"          !IdentifierPart
+SatisfiesToken  = "satisfies"       !IdentifierPart
+ShapeToken      = "shape"           !IdentifierPart
 StructToken     = "struct"          !IdentifierPart
 ThisToken       = "this"            !IdentifierPart
 ThrowToken      = "throw"           !IdentifierPart
@@ -85,7 +88,8 @@ YieldToken      = "yield"           !IdentifierPart
 UnderscoreToken = "_"               !IdentifierPart
 
 Keyword
-  = BreakToken
+  = AndToken
+  / BreakToken
   / ConstToken
   / ContinueToken
   / ElseToken
@@ -97,12 +101,13 @@ Keyword
   / FunctionToken
   / IfToken
   / ImportToken
-  / InterfaceToken
   / MatchToken
   / MutToken
-  / NewToken
   / OfToken
+  / OrToken
   / ReturnToken
+  / SatisfiesToken
+  / ShapeToken
   / StructToken
   / ThisToken
   / ThrowToken
@@ -132,8 +137,8 @@ Identifier
   = !ReservedWord name:IdentifierName { return name; }
 
 BooleanLiteral
-  = TrueToken  { return { type: "Literal", type: "boolean", value: true  }; }
-  / FalseToken { return { type: "Literal", type: "boolean", value: false }; }
+  = TrueToken  { return { type: "BooleanLiteral", value: true  }; }
+  / FalseToken { return { type: "BooleanLiteral", value: false }; }
 
 BinaryDigit
   = [0-1]
@@ -178,31 +183,44 @@ ExponentIndicator
 DecimalExponentPart
   = ExponentIndicator DecimalSignedInteger
 
-NumericLiteral
+DecimalLiteral
   = [+-]? DecimalIntegerLiteral ("." AnyDecimalDigits)? DecimalExponentPart? {
-    return { type: "Literal", type: "number", value: text(), base: 10 };
+    return { type: "NumericLiteral", value: text(), base: 10 };
   }
   / [+-]? "." DecimalDigit AnyDecimalDigits DecimalExponentPart? {
-    return { type: "Literal", type: "number", value: text(), base: 10 };
+    return { type: "NumericLiteral", value: text(), base: 10 };
   }
-  / [+-]? "0b" AnyBinaryDigits ("." AnyBinaryDigits)? {
-    return { type: "Literal", type: "number", value: text(), base: 2 };
+
+BinaryLiteral
+  = [+-]? "0b" AnyBinaryDigits ("." AnyBinaryDigits)? {
+    return { type: "NumericLiteral", value: text(), base: 2 };
   }
   / [+-]? "0b" "." AnyBinaryDigits {
-    return { type: "Literal", type: "number", value: text(), base: 2 };
+    return { type: "NumericLiteral", value: text(), base: 2 };
   }
-  / [+-]? "0o" AnyOctalDigits ("." AnyOctalDigits)? {
-    return { type: "Literal", type: "number", value: text(), base: 8 };
+
+OctalLiteral
+  = [+-]? "0o" AnyOctalDigits ("." AnyOctalDigits)? {
+    return { type: "NumericLiteral", value: text(), base: 8 };
   }
   / [+-]? "0o" "." AnyOctalDigits {
-    return { type: "Literal", type: "number", value: text(), base: 8 };
+    return { type: "NumericLiteral", value: text(), base: 8 };
   }
-  / [+-]? "0x" AnyHexDigits ("." AnyHexDigits)? {
-    return { type: "Literal", type: "number", value: text(), base: 16 };
+
+HexLiteral
+  = [+-]? "0x" AnyHexDigits ("." AnyHexDigits)? {
+    return { type: "NumericLiteral", value: text(), base: 16 };
   }
   / [+-]? "0x" "." AnyHexDigits {
-    return { type: "Literal", type: "number", value: text(), base: 16 };
+    return { type: "NumericLiteral", value: text(), base: 16 };
   }
+
+
+NumericLiteral
+  = BinaryLiteral
+  / OctalLiteral
+  / HexLiteral
+  / DecimalLiteral
 
 SingleEscapeCharacter
   = "'"
@@ -259,10 +277,10 @@ SingleStringCharacter
 
 StringLiteral "string"
   = '"' chars:DoubleStringCharacter* '"' {
-    return { type: "Literal", type: "string", value: chars.join("") };
+    return { type: "StringLiteral", value: chars.join("") };
   }
   / "'" chars:SingleStringCharacter* "'" {
-    return { type: "Literal", type: "string", value: chars.join("") };
+    return { type: "StringLiteral", value: chars.join("") };
   }
 
 RegularExpressionBody
@@ -296,8 +314,8 @@ RegularExpressionFlags
 
 RegularExpressionLiteral
   = "/" pattern:$RegularExpressionBody "/" flags:$RegularExpressionFlags {
-      return { type: "Literal", type: "regex", value: pattern, flags: flags };
-    }
+    return { type: "RegularExpressionLiteral", pattern, flags };
+  }
 
 Literal
   = BooleanLiteral
@@ -305,6 +323,80 @@ Literal
   / StringLiteral
   / RegularExpressionLiteral
 
+
+// ----- Expressions -----
+
+// Expression types, from the lowest precedence to the highest
+// 1. Assignment
+// 2. Conditional
+// 3. Logical Or
+// 4. Logical And
+// 5. Bitwise Or
+// 6. Bitwise Xor
+// 7. Bitwise And
+// 8. Equality
+// 9. Relational
+// 10. Shift
+// 11. Additive
+// 12. Multiplicative
+// 13. Unary
+// 14. Postfix
+// 15. Implicit Call
+// 16. Member, Explicit Call
+// 17. Primary
+
+Expression
+  // = AssignmentExpression
+  = ExplicitCallExpression // FIXME
+
+// TypeExpression
+//   = ConditionalExpression
+
+
+// --- Primary ---
+
+PrimaryExpression
+  = Literal
+  / Identifier
+  / ThisToken { return { type: "ThisExpression" }; }
+  / ArrayLiteral
+  / "(" _ expr:Expression _ ")" { return expr; }
+
+ArrayLiteral
+  = "[" _ el:ElementList? _ "]" {
+    return { type: "ArrayExpression", elements: el ?? [] };
+  }
+
+ElementList
+  = head:Expression _ "," _ tail:ElementList { return [head, ...tail]; }
+  / head:Expression _ ","? { return [head]; }
+
+
+// --- Member, Explicit Call ---
+
+ExplicitCallTail
+  = _ "(" _ args: ElementList? _ ")" {
+    return callee => ({ type: "CallExpression", implicit: false, callee, arguments: args ?? [] });
+  }
+
+IndexTail
+  = _ "[" _ index:Expression _ "]" {
+    return object => ({ type: "IndexExpression", object, index });
+  }
+
+FieldTail
+  = _ "." _ field:IdentifierName {
+    return object => ({ type: "FieldExpression", object, field });
+  }
+
+ExplicitCallExpression
+  = head:PrimaryExpression
+  tail:(ExplicitCallTail / IndexTail / FieldTail)* {
+    return tail.reduce(
+      (inner, createOuter) => createOuter(inner),
+      head
+    );
+  }
 
 // ----- Unicode Character Categories -----
 

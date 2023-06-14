@@ -1,5 +1,7 @@
-import { parse } from "./generated/javascript.js";
+import { parse } from "./generated/meg.js";
 
-const input = prompt("Enter code:");
-const output = parse(input);
-console.log(output);
+while (true) {
+  const input = prompt("> ");
+  const output = parse(input);
+  console.log(output);
+}

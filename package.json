@@ -4,7 +4,7 @@
   "description": "Peggy-based parser for the Mag programming language",
   "scripts": {
     "build": "deno run --allow-read --allow-write src/generateParser.ts",
-    "run": "deno run src/parse.ts"
+    "ast": "pnpm build && deno run src/parse.ts"
   },
   "keywords": [],
   "author": "Michal Grňo",
