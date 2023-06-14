@@ -1,4 +1,4 @@
-import { parse } from "./generated/meg.js";
+import { parse } from "./generated/mag.js";
 
 while (true) {
   const input = prompt("> ");
