@@ -1,3 +1,16 @@
+{{
+  function binaryExpr (head, tail) {
+    return tail.reduce(
+      (left, [operator, right]) => ({
+        type: "BinaryExpression",
+        operator,
+        left,
+        right
+      }),
+      head
+    )
+  }
+}}
 
 Start
   // = _ program:Program _ { return program; }
@@ -55,37 +68,36 @@ _
 
 // ----- Keywords -----
 
-AndToken        = "and"             !IdentifierPart
-BreakToken      = "break"           !IdentifierPart
-ConstToken      = "const"           !IdentifierPart
-ContinueToken   = "continue"        !IdentifierPart
-ElseToken       = "else"            !IdentifierPart
-EnumToken       = "enum"            !IdentifierPart
-ExportToken     = "export"          !IdentifierPart
-ExtendsToken    = "extends"         !IdentifierPart
-FalseToken      = "false"           !IdentifierPart
-ForToken        = "for"             !IdentifierPart
-FunctionToken   = "fn" / "function" !IdentifierPart
-IfToken         = "if"              !IdentifierPart
-ImportToken     = "import"          !IdentifierPart
-MatchToken      = "match"           !IdentifierPart
-MutToken        = "mut"             !IdentifierPart
-OfToken         = "of"              !IdentifierPart
-OrToken         = "or"              !IdentifierPart
-ReturnToken     = "return"          !IdentifierPart
-SatisfiesToken  = "satisfies"       !IdentifierPart
-ShapeToken      = "shape"           !IdentifierPart
-StructToken     = "struct"          !IdentifierPart
-ThisToken       = "this"            !IdentifierPart
-ThrowToken      = "throw"           !IdentifierPart
-TraitToken      = "trait"           !IdentifierPart
-TryToken        = "try"             !IdentifierPart
-TypeToken       = "type"            !IdentifierPart
-TrueToken       = "true"            !IdentifierPart
-TypeofToken     = "typeof"          !IdentifierPart
-VoidToken       = "void"            !IdentifierPart
-YieldToken      = "yield"           !IdentifierPart
-UnderscoreToken = "_"               !IdentifierPart
+AndToken        = @"and"                !IdentifierPart
+BreakToken      = @"break"              !IdentifierPart
+ConstToken      = @"const"              !IdentifierPart
+ContinueToken   = @"continue"           !IdentifierPart
+ElseToken       = @"else"               !IdentifierPart
+EnumToken       = @"enum"               !IdentifierPart
+ExportToken     = @"export"             !IdentifierPart
+ExtendsToken    = @"extends"            !IdentifierPart
+FalseToken      = @"false"              !IdentifierPart
+ForToken        = @"for"                !IdentifierPart
+FunctionToken   = $("fn" / "function")  !IdentifierPart
+IfToken         = @"if"                 !IdentifierPart
+ImportToken     = @"import"             !IdentifierPart
+MatchToken      = @"match"              !IdentifierPart
+MutToken        = @"mut"                !IdentifierPart
+OfToken         = @"of"                 !IdentifierPart
+OrToken         = @"or"                 !IdentifierPart
+ReturnToken     = @"return"             !IdentifierPart
+SatisfiesToken  = @"satisfies"          !IdentifierPart
+ShapeToken      = @"shape"              !IdentifierPart
+StructToken     = @"struct"             !IdentifierPart
+ThisToken       = @"this"               !IdentifierPart
+ThrowToken      = @"throw"              !IdentifierPart
+TraitToken      = @"trait"              !IdentifierPart
+TryToken        = @"try"                !IdentifierPart
+TypeToken       = @"type"               !IdentifierPart
+TrueToken       = @"true"               !IdentifierPart
+TypeofToken     = @"typeof"             !IdentifierPart
+YieldToken      = @"yield"              !IdentifierPart
+UnderscoreToken = @"_"                  !IdentifierPart
 
 Keyword
   = AndToken
@@ -116,7 +128,6 @@ Keyword
   / TypeToken
   / TrueToken
   / TypeofToken
-  / VoidToken
   / YieldToken
   / UnderscoreToken
 
@@ -158,6 +169,9 @@ HexDigit
 NumericSeparator
   = "_"
 
+RadixSeparator
+  = $("." !".")
+
 AnyBinaryDigits
   = (NumericSeparator? BinaryDigit)*
 
@@ -184,34 +198,34 @@ DecimalExponentPart
   = ExponentIndicator DecimalSignedInteger
 
 DecimalLiteral
-  = [+-]? DecimalIntegerLiteral ("." AnyDecimalDigits)? DecimalExponentPart? {
+  = [+-]? DecimalIntegerLiteral (RadixSeparator AnyDecimalDigits)? DecimalExponentPart? {
     return { type: "NumericLiteral", value: text(), base: 10 };
   }
-  / [+-]? "." DecimalDigit AnyDecimalDigits DecimalExponentPart? {
+  / [+-]? RadixSeparator DecimalDigit AnyDecimalDigits DecimalExponentPart? {
     return { type: "NumericLiteral", value: text(), base: 10 };
   }
 
 BinaryLiteral
-  = [+-]? "0b" AnyBinaryDigits ("." AnyBinaryDigits)? {
+  = [+-]? "0b" AnyBinaryDigits (RadixSeparator AnyBinaryDigits)? {
     return { type: "NumericLiteral", value: text(), base: 2 };
   }
-  / [+-]? "0b" "." AnyBinaryDigits {
+  / [+-]? "0b" RadixSeparator AnyBinaryDigits {
     return { type: "NumericLiteral", value: text(), base: 2 };
   }
 
 OctalLiteral
-  = [+-]? "0o" AnyOctalDigits ("." AnyOctalDigits)? {
+  = [+-]? "0o" AnyOctalDigits (RadixSeparator AnyOctalDigits)? {
     return { type: "NumericLiteral", value: text(), base: 8 };
   }
-  / [+-]? "0o" "." AnyOctalDigits {
+  / [+-]? "0o" RadixSeparator AnyOctalDigits {
     return { type: "NumericLiteral", value: text(), base: 8 };
   }
 
 HexLiteral
-  = [+-]? "0x" AnyHexDigits ("." AnyHexDigits)? {
+  = [+-]? "0x" AnyHexDigits (RadixSeparator AnyHexDigits)? {
     return { type: "NumericLiteral", value: text(), base: 16 };
   }
-  / [+-]? "0x" "." AnyHexDigits {
+  / [+-]? "0x" RadixSeparator AnyHexDigits {
     return { type: "NumericLiteral", value: text(), base: 16 };
   }
 
@@ -327,27 +341,27 @@ Literal
 // ----- Expressions -----
 
 // Expression types, from the lowest precedence to the highest
-// 1. Assignment
-// 2. Conditional
-// 3. Logical Or
-// 4. Logical And
-// 5. Bitwise Or
-// 6. Bitwise Xor
-// 7. Bitwise And
-// 8. Equality
-// 9. Relational
-// 10. Shift
-// 11. Additive
-// 12. Multiplicative
-// 13. Unary
-// 14. Postfix
-// 15. Implicit Call
+// 1. Return, Yield, Throw
+// 2. Assignment
+// 3. Conditional
+// 4. Range
+// 5. Logical Or
+// 6. Logical And
+// 7. Relational, Equality
+// 8. Bitwise Or
+// 9. Bitwise Xor
+// 10. Bitwise And
+// 11. Shift
+// 12. Additive
+// 13. Multiplicative
+// 14. Unary
+// 15. Update, Implicit Call
 // 16. Member, Explicit Call
 // 17. Primary
 
 Expression
   // = AssignmentExpression
-  = ImplicitCallExpression // FIXME
+  = RangeExpression // FIXME
 
 // TypeExpression
 //   = ConditionalExpression
@@ -360,7 +374,7 @@ PrimaryExpression
   / Identifier
   / ThisToken { return { type: "ThisExpression" }; }
   / ArrayLiteral
-  / "(" _ expr:Expression _ ")" { return expr; }
+  / "(" _ expression:Expression _ ")" { return { type: "ParenthesizedExpression", expression }; }
 
 ArrayLiteral
   = "[" _ el:ElementList? _ "]" {
@@ -399,13 +413,185 @@ ExplicitCallExpression
   }
 
 
-// --- Implicit Call ---
+// --- Implicit Call, Update ---
+
+PrefixUpdateExpression
+  = operator:("++" / "--") _ argument:ExplicitCallExpression {
+    return { type: "UpdateExpression", operator, argument, prefix: true };
+  }
+
+PostfixUpdateExpression
+  = argument:ExplicitCallExpression _ operator:("++" / "--") {
+    return { type: "UpdateExpression", operator, argument, prefix: false };
+  }
 
 ImplicitCallExpression
-  = callee:ExplicitCallExpression _ arg:ImplicitCallExpression {
+  = PrefixUpdateExpression
+  / PostfixUpdateExpression
+  / callee:ExplicitCallExpression _ arg:ImplicitCallExpression {
     return { type: "CallExpression", implicit: true, callee, arguments: [arg] }
   }
+  / TypeofToken argument:ExplicitCallExpression {
+    return { type: "TypeOfExpression", argument }
+  }
   / ExplicitCallExpression
+
+
+// --- Unary ---
+
+UnaryOperator
+  = $("+" !"=")
+  / $("-" !"=")
+  / "~"
+  / "!"
+
+UnaryExpression
+  = ImplicitCallExpression
+  / operator:UnaryOperator _ argument:UnaryExpression {
+    return { type: "UnaryExpression", operator, argument, prefix: true };
+  }
+
+
+// --- Multiplicative ---
+
+MultiplicativeOperator
+  = $("*" !"=")
+  / $("/" !"=")
+  / $("%" !"=")
+
+MultiplicativeExpression
+  = head:UnaryExpression
+    tail:(_ @MultiplicativeOperator _ @UnaryExpression)*
+    { return binaryExpr(head, tail); }
+
+
+// --- Additive ---
+
+AdditiveOperator
+  = $("+" !"=")
+  / $("-" !"=")
+
+AdditiveExpression
+  = head:MultiplicativeExpression
+    tail:(_ @AdditiveOperator _ @MultiplicativeExpression)*
+    { return binaryExpr(head, tail); }
+
+
+// --- Shift ---
+
+ShiftOperator
+  = $("<<"  !"=")
+  / $(">>>" !"=")
+  / $(">>"  !"=")
+
+ShiftExpression
+  = head:AdditiveExpression
+    tail:(_ @ShiftOperator _ @ShiftExpression)*
+    { return binaryExpr(head, tail); }
+
+
+// --- Bitwise And ---
+
+BitwiseAndOperator
+  = $("&" ![&=])
+
+BitwiseAndExpression
+  = head:ShiftExpression
+    tail:(_ @BitwiseAndOperator _ @BitwiseAndExpression)*
+    { return binaryExpr(head, tail); }
+
+
+// --- Bitwise Xor ---
+
+BitwiseXorOperator
+  = $("^" !"=")
+
+BitwiseXorExpression
+  = head:BitwiseAndExpression
+    tail:(_ @BitwiseXorOperator _ @BitwiseXorExpression)*
+    { return binaryExpr(head, tail); }
+
+
+// --- Bitwise Or ---
+
+BitwiseOrOperator
+  = $("|" ![|=])
+
+BitwiseOrExpression
+  = head:BitwiseXorExpression
+    tail:(_ @BitwiseOrOperator _ @BitwiseOrExpression)*
+    { return binaryExpr(head, tail); }
+
+
+// --- Relational, Equality ---
+
+RelationalOperator
+  = "<="
+  / ">="
+  / $("<" !"<")
+  / $(">" !">")
+  / "==="
+  / "!=="
+  / "=="
+  / "!="
+
+RelationalExpression
+  = left:BitwiseOrExpression rest:(_ @RelationalOperator _ @BitwiseOrExpression)? {
+    if (!rest) return left;
+
+    const [operator, right] = rest;
+    return { type: "BinaryExpression", operator, left, right };
+  }
+
+
+// --- Logical And ---
+
+LogicalAndOperator
+  = "&&"
+  / AndToken
+
+LogicalAndExpression
+  = head:RelationalExpression
+    tail:(_ @LogicalAndOperator _ @LogicalAndExpression)*
+    { return binaryExpr(head, tail); }
+
+
+// --- Logical Or ---
+
+LogicalOrOperator
+  = "||"
+  / OrToken
+
+LogicalOrExpression
+  = head:LogicalAndExpression
+    tail:(_ @LogicalOrOperator _ @LogicalOrExpression)*
+    { return binaryExpr(head, tail); }
+
+
+// --- Range ---
+
+RangeOperator
+  = $(".." !"." "="?)
+
+RangeExpression
+  = left:LogicalOrExpression rest:(_ @RangeOperator _ @LogicalOrExpression)? {
+    if (!rest) return left;
+
+    const [operator, right] = rest;
+    return { type: "BinaryExpression", operator, left, right };
+  }
+
+
+// --- Conditional ---
+// TODO
+
+
+// --- Assignment ---
+// TODO
+
+
+// --- Return, Yield, Throw ---
+// TODO
 
 
 // ----- Unicode Character Categories -----
