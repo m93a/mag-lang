@@ -355,8 +355,8 @@ Literal
 // 12. Additive
 // 13. Multiplicative
 // 14. Unary
-// 15. Update, Implicit Call
-// 16. Member, Explicit Call
+// 15. Update
+// 16. Member, Call
 // 17. Primary
 
 Expression
@@ -390,7 +390,7 @@ ElementList
 
 ExplicitCallTail
   = _ "(" _ args: ElementList? _ ")" {
-    return callee => ({ type: "CallExpression", implicit: false, callee, arguments: args ?? [] });
+    return callee => ({ type: "CallExpression", callee, arguments: args ?? [] });
   }
 
 IndexTail
@@ -413,7 +413,7 @@ ExplicitCallExpression
   }
 
 
-// --- Implicit Call, Update ---
+// --- Update ---
 
 PrefixUpdateExpression
   = operator:("++" / "--") _ argument:ExplicitCallExpression {
@@ -425,15 +425,9 @@ PostfixUpdateExpression
     return { type: "UpdateExpression", operator, argument, prefix: false };
   }
 
-ImplicitCallExpression
+UpdateExpression
   = PrefixUpdateExpression
   / PostfixUpdateExpression
-  / callee:ExplicitCallExpression _ arg:ImplicitCallExpression {
-    return { type: "CallExpression", implicit: true, callee, arguments: [arg] }
-  }
-  / TypeofToken argument:ExplicitCallExpression {
-    return { type: "TypeOfExpression", argument }
-  }
   / ExplicitCallExpression
 
 
@@ -446,9 +440,12 @@ UnaryOperator
   / "!"
 
 UnaryExpression
-  = ImplicitCallExpression
+  = UpdateExpression
   / operator:UnaryOperator _ argument:UnaryExpression {
     return { type: "UnaryExpression", operator, argument, prefix: true };
+  }
+  / TypeofToken argument:ExplicitCallExpression {
+    return { type: "TypeOfExpression", argument }
   }
 
 
