@@ -341,9 +341,9 @@ Literal
 // ----- Expressions -----
 
 // Expression types, from the lowest precedence to the highest
-// 1. Return, Yield, Throw
-// 2. Assignment
-// 3. Conditional
+// 1. Conditional
+// 2. Return, Yield, Throw
+// 3. Assignment
 // 4. Range
 // 5. Logical Or
 // 6. Logical And
@@ -582,15 +582,27 @@ RangeExpression
   }
 
 
-// --- Conditional ---
-// TODO
-
-
 // --- Assignment ---
-// TODO
+
+LeftHandPattern
+  = Identifier
+  / LeftHandArray
+
+LeftHandArray
+  = "[" _ el:LeftHandElementList? _ "]" {
+    return { type: "ArrayPattern", elements: el ?? [] };
+  }
+
+LeftHandElementList
+  = head:LeftHandPattern _ "," tail:LeftHandElementList { return [head, ...tail]; }
+  / head:LeftHandPattern _ ","? { return [head]; }
 
 
 // --- Return, Yield, Throw ---
+// TODO
+
+
+// --- Conditional ---
 // TODO
 
 
