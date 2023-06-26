@@ -664,8 +664,37 @@ AssignmentExpression
   / RangeExpression
 
 
-// --- Return, Yield, Throw, Do ---
+// --- Conditions ---
 
+ElseExpressionTail
+  = ElseToken @Block
+  / ElseToken @Expression
+
+ElseStatementTail
+  = ElseToken @Block
+  / ElseToken @Statement
+
+IfExpression
+  = IfToken _ condition:Expression _ consequent:Block _ alternate:ElseExpressionTail {
+    return { type: "ConditionalExpression", condition, consequent, alternate };
+  }
+  / IfToken _ condition:Expression _ ThenToken _ consequent:Expression _ alternate:ElseExpressionTail {
+    return { type: "ConditionalExpression", condition, consequent, alternate };
+  }
+  / IfToken _ "(" _ condition:Expression _ ")" _ consequent:Expression _ alternate:ElseExpressionTail {
+    return { type: "ConditionalExpression", condition, consequent, alternate };
+  }
+
+IfStatement
+  = IfToken _ condition:Expression _ consequent:Block _ alternate:ElseStatementTail {
+    return { type: "ConditionalStatement", condition, consequent, alternate };
+  }
+  / IfToken _ "(" _ condition:Expression _ ")" _ consequent:Statement _ alternate:ElseStatementTail {
+    return { type: "ConditionalStatement", condition, consequent, alternate }
+  }
+
+
+// --- Return, Yield, Throw, Do ---
 
 ReturnExpression
   = ReturnToken _ argument:ReturnExpression {
@@ -681,7 +710,23 @@ ReturnExpression
       argument
     };
   }
+  / IfExpression
   / AssignmentExpression
+
+
+// ----- Statements -----
+
+Statement
+  = "ConditionalStatement"
+  / Expression _ ";"
+
+Block
+  = "{" _ body:Statement* _ "}" {
+    return {
+      type: "BlockStatement",
+      body
+    };
+  }
 
 
 // ----- Unicode Character Categories -----
