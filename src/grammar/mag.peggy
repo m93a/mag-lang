@@ -1,5 +1,5 @@
 {{
-  function binaryExpr (head, tail) {
+  function binaryExprLeft (head, tail) {
     return tail.reduce(
       (left, [operator, right]) => ({
         type: "BinaryExpression",
@@ -8,6 +8,20 @@
         right
       }),
       head
+    )
+  }
+
+  function binaryExprRight (head, tail) {
+    const operators = tail.map(([op, _right]) => op);
+    const operands = [head, ...tail.map(([_, right]) => right)];
+
+    return operands.reduceRight(
+      (right, left) => ({
+        type: "BinaryExpression",
+        operator: operators.pop(),
+        left,
+        right
+      })
     )
   }
 }}
@@ -72,6 +86,7 @@ AndToken        = @"and"                !IdentifierPart
 BreakToken      = @"break"              !IdentifierPart
 ConstToken      = @"const"              !IdentifierPart
 ContinueToken   = @"continue"           !IdentifierPart
+DoToken         = @"do"                 !IdentifierPart
 ElseToken       = @"else"               !IdentifierPart
 EnumToken       = @"enum"               !IdentifierPart
 ExportToken     = @"export"             !IdentifierPart
@@ -89,6 +104,7 @@ ReturnToken     = @"return"             !IdentifierPart
 SatisfiesToken  = @"satisfies"          !IdentifierPart
 ShapeToken      = @"shape"              !IdentifierPart
 StructToken     = @"struct"             !IdentifierPart
+ThenToken       = @"then"               !IdentifierPart
 ThisToken       = @"this"               !IdentifierPart
 ThrowToken      = @"throw"              !IdentifierPart
 TraitToken      = @"trait"              !IdentifierPart
@@ -104,6 +120,7 @@ Keyword
   / BreakToken
   / ConstToken
   / ContinueToken
+  / DoToken
   / ElseToken
   / EnumToken
   / ExportToken
@@ -121,6 +138,7 @@ Keyword
   / SatisfiesToken
   / ShapeToken
   / StructToken
+  / ThenToken
   / ThisToken
   / ThrowToken
   / TraitToken
@@ -337,31 +355,104 @@ Literal
   / StringLiteral
   / RegularExpressionLiteral
 
+UpdateOperator
+  = "++"
+  / "--"
+
+ExponentialOperator
+  = "**"
+
+UnaryOperator
+  = $("+" !"=")
+  / $("-" !"=")
+  / "~"
+  / "!"
+
+MultiplicativeOperator
+  = $("*" !("=" / "*"))
+  / $("/" !"=")
+  / $("%" !"=")
+
+AdditiveOperator
+  = $("+" !"=")
+  / $("-" !"=")
+
+ShiftOperator
+  = $("<<"  !"=")
+  / $(">>>" !"=")
+  / $(">>"  !"=")
+
+BitwiseAndOperator
+  = $("&" ![&=])
+
+BitwiseXorOperator
+  = $("^" !"=")
+
+BitwiseOrOperator
+  = $("|" !("|" / "="))
+
+RelationalOperator
+  = "<="
+  / ">="
+  / $("<" !"<")
+  / $(">" !">")
+  / "==="
+  / "!=="
+  / "=="
+  / "!="
+
+LogicalAndOperator
+  = "&&"
+  / AndToken
+
+LogicalOrOperator
+  = "||"
+  / OrToken
+  
+RangeOperator
+  = $(".." !"." "="?)
+
+AssignmentOperator
+  = "**="
+  / "*="
+  / "/="
+  / "%="
+  / "+="
+  / "-="
+  / "<<="
+  / ">>="
+  / ">>>="
+  / "&="
+  / "^="
+  / "|="
+  / "||="
+  / "&&="
+  / "??="
+
 
 // ----- Expressions -----
 
 // Expression types, from the lowest precedence to the highest
-// 1. Conditional
-// 2. Return, Yield, Throw
-// 3. Assignment
-// 4. Range
-// 5. Logical Or
-// 6. Logical And
-// 7. Relational, Equality
-// 8. Bitwise Or
-// 9. Bitwise Xor
-// 10. Bitwise And
-// 11. Shift
-// 12. Additive
-// 13. Multiplicative
-// 14. Unary
+// 1. Return, Effects, Branching
+// 2. Assignment
+// 3. Range
+// 4. Logical Or
+// 5. Logical And
+// 6. Relational, Equality
+// 7. Bitwise Or
+// 8. Bitwise Xor
+// 9. Bitwise And
+// 10. Shift
+// 11. Additive
+// 12. Multiplicative
+// 13. Unary
+// 14. Exponential
 // 15. Update
 // 16. Member, Call
 // 17. Primary
 
 Expression
-  // = AssignmentExpression
-  = RangeExpression // FIXME
+  = ReturnExpression
 
 // TypeExpression
 //   = ConditionalExpression
@@ -386,9 +477,9 @@ ElementList
   / head:Expression _ ","? { return [head]; }
 
 
-// --- Member, Explicit Call ---
+// --- Member, Call ---
 
-ExplicitCallTail
+CallTail
   = _ "(" _ args: ElementList? _ ")" {
     return callee => ({ type: "CallExpression", callee, arguments: args ?? [] });
   }
@@ -403,9 +494,9 @@ FieldTail
     return object => ({ type: "FieldExpression", object, field });
   }
 
-ExplicitCallExpression
+CallExpression
   = head:PrimaryExpression
-  tail:(ExplicitCallTail / IndexTail / FieldTail)* {
+  tail:(CallTail / IndexTail / FieldTail)* {
     return tail.reduce(
       (inner, createOuter) => createOuter(inner),
       head
@@ -416,121 +507,90 @@ ExplicitCallExpression
 // --- Update ---
 
 PrefixUpdateExpression
-  = operator:("++" / "--") _ argument:ExplicitCallExpression {
+  = operator:UpdateOperator _ argument:CallExpression {
     return { type: "UpdateExpression", operator, argument, prefix: true };
   }
 
 PostfixUpdateExpression
-  = argument:ExplicitCallExpression _ operator:("++" / "--") {
+  = argument:CallExpression _ operator:UpdateOperator {
     return { type: "UpdateExpression", operator, argument, prefix: false };
   }
 
 UpdateExpression
   = PrefixUpdateExpression
   / PostfixUpdateExpression
-  / ExplicitCallExpression
+  / CallExpression
+
+
+// --- Exponential ---
+
+ExponentialExpression
+  = head:UpdateExpression
+    tail:(_ @ExponentialOperator _ @UpdateExpression)*
+    { return binaryExprRight(head, tail); }
 
 
 // --- Unary ---
 
-UnaryOperator
-  = $("+" !"=")
-  / $("-" !"=")
-  / "~"
-  / "!"
-
 UnaryExpression
-  = UpdateExpression
+  = ExponentialExpression
   / operator:UnaryOperator _ argument:UnaryExpression {
     return { type: "UnaryExpression", operator, argument, prefix: true };
   }
-  / TypeofToken argument:ExplicitCallExpression {
+  / TypeofToken argument:CallExpression {
     return { type: "TypeOfExpression", argument }
   }
 
 
 // --- Multiplicative ---
 
-MultiplicativeOperator
-  = $("*" !"=")
-  / $("/" !"=")
-  / $("%" !"=")
-
 MultiplicativeExpression
   = head:UnaryExpression
     tail:(_ @MultiplicativeOperator _ @UnaryExpression)*
-    { return binaryExpr(head, tail); }
+    { return binaryExprLeft(head, tail); }
 
 
 // --- Additive ---
 
-AdditiveOperator
-  = $("+" !"=")
-  / $("-" !"=")
-
 AdditiveExpression
   = head:MultiplicativeExpression
     tail:(_ @AdditiveOperator _ @MultiplicativeExpression)*
-    { return binaryExpr(head, tail); }
+    { return binaryExprLeft(head, tail); }
 
 
 // --- Shift ---
 
-ShiftOperator
-  = $("<<"  !"=")
-  / $(">>>" !"=")
-  / $(">>"  !"=")
-
 ShiftExpression
   = head:AdditiveExpression
     tail:(_ @ShiftOperator _ @ShiftExpression)*
-    { return binaryExpr(head, tail); }
+    { return binaryExprLeft(head, tail); }
 
 
 // --- Bitwise And ---
 
-BitwiseAndOperator
-  = $("&" ![&=])
-
 BitwiseAndExpression
   = head:ShiftExpression
     tail:(_ @BitwiseAndOperator _ @BitwiseAndExpression)*
-    { return binaryExpr(head, tail); }
+    { return binaryExprLeft(head, tail); }
 
 
 // --- Bitwise Xor ---
 
-BitwiseXorOperator
-  = $("^" !"=")
-
 BitwiseXorExpression
   = head:BitwiseAndExpression
     tail:(_ @BitwiseXorOperator _ @BitwiseXorExpression)*
-    { return binaryExpr(head, tail); }
+    { return binaryExprLeft(head, tail); }
 
 
 // --- Bitwise Or ---
 
-BitwiseOrOperator
-  = $("|" ![|=])
-
 BitwiseOrExpression
   = head:BitwiseXorExpression
     tail:(_ @BitwiseOrOperator _ @BitwiseOrExpression)*
-    { return binaryExpr(head, tail); }
+    { return binaryExprLeft(head, tail); }
 
 
 // --- Relational, Equality ---
-
-RelationalOperator
-  = "<="
-  / ">="
-  / $("<" !"<")
-  / $(">" !">")
-  / "==="
-  / "!=="
-  / "=="
-  / "!="
 
 RelationalExpression
   = left:BitwiseOrExpression rest:(_ @RelationalOperator _ @BitwiseOrExpression)? {
@@ -543,32 +603,21 @@ RelationalExpression
 
 // --- Logical And ---
 
-LogicalAndOperator
-  = "&&"
-  / AndToken
-
 LogicalAndExpression
   = head:RelationalExpression
     tail:(_ @LogicalAndOperator _ @LogicalAndExpression)*
-    { return binaryExpr(head, tail); }
+    { return binaryExprLeft(head, tail); }
 
 
 // --- Logical Or ---
 
-LogicalOrOperator
-  = "||"
-  / OrToken
-
 LogicalOrExpression
   = head:LogicalAndExpression
     tail:(_ @LogicalOrOperator _ @LogicalOrExpression)*
-    { return binaryExpr(head, tail); }
+    { return binaryExprLeft(head, tail); }
 
 
 // --- Range ---
-
-RangeOperator
-  = $(".." !"." "="?)
 
 RangeExpression
   = left:LogicalOrExpression rest:(_ @RangeOperator _ @LogicalOrExpression)? {
@@ -584,6 +633,7 @@ RangeExpression
 LeftHandPattern
   = Identifier
   / LeftHandArray
+  / LeftHandMember
 
 LeftHandArray
   = "[" _ el:LeftHandElementList? _ "]" {
@@ -594,13 +644,44 @@ LeftHandElementList
   = head:LeftHandPattern _ "," tail:LeftHandElementList { return [head, ...tail]; }
   / head:LeftHandPattern _ ","? { return [head]; }
 
+LeftHandMember
+  = head:PrimaryExpression
+    tail:(IndexTail / FieldTail)+ {
+    return tail.reduce(
+      (inner, createOuter) => createOuter(inner),
+      head
+    )
+  }
 
-// --- Return, Yield, Throw ---
-// TODO
+AssignmentExpression
+  = left:LeftHandPattern _ "=" !"=" _ right:Expression {
+    return {
+      type: "AssignmentExpression",
+      operator: "=",
+      left, right
+    };
+  }
+  / RangeExpression
 
 
-// --- Conditional ---
-// TODO
+// --- Return, Yield, Throw, Do ---
+
+
+ReturnExpression
+  = ReturnToken _ argument:ReturnExpression {
+    return {
+      type: "ReturnExpression",
+      argument
+    };
+  }
+  / kind:(YieldToken / ThrowToken / DoToken) _ argument:ReturnExpression {
+    return {
+      type: "EffectExpression",
+      kind,
+      argument
+    };
+  }
+  / AssignmentExpression
 
 
 // ----- Unicode Character Categories -----
