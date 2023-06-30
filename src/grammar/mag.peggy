@@ -363,7 +363,7 @@ ExponentialOperator
   = "**"
 
 UnaryOperator
-  / $("-" !"=")
+  = $("-" !"=")
   / "~"
   / "!"
 
