@@ -27,8 +27,7 @@
 }}
 
 Start
-  // = _ program:Program _ { return program; }
-  = _ program:Expression _ { return program; } // FIXME
+  = _ program:Program _ { return program; }
 
 
 // ----- Lexical grammar -----
@@ -41,6 +40,7 @@ WhiteSpace "whitespace"
   / "\u00A0"
   / "\uFEFF"
   / Zs
+  / LineTerminator
 
 LineTerminator
   = [\n\r\u2028\u2029]
@@ -666,29 +666,29 @@ AssignmentExpression
 // --- Conditions ---
 
 ElseExpressionTail
-  = ElseToken @Block
-  / ElseToken @Expression
+  = ElseToken _ @Block
+  / ElseToken _ @Expression
 
 ElseStatementTail
-  = ElseToken @Block
-  / ElseToken @Statement
+  = ElseToken _ @Block
+  / ElseToken _ @Statement
 
 IfExpression
   = IfToken _ condition:Expression _ consequent:Block _ alternate:ElseExpressionTail {
     return { type: "ConditionalExpression", condition, consequent, alternate };
   }
   / IfToken _ condition:Expression _ ThenToken _ consequent:Expression _ alternate:ElseExpressionTail {
-    return { type: "ConditionalExpression", condition, consequent, alternate };
+    return { type: "ConditionalExpression", explicitThen: true, condition, consequent, alternate };
   }
   / IfToken _ "(" _ condition:Expression _ ")" _ consequent:Expression _ alternate:ElseExpressionTail {
     return { type: "ConditionalExpression", condition, consequent, alternate };
   }
 
 IfStatement
-  = IfToken _ condition:Expression _ consequent:Block _ alternate:ElseStatementTail {
+  = IfToken _ condition:Expression _ consequent:Block _ alternate:ElseStatementTail? {
     return { type: "ConditionalStatement", condition, consequent, alternate };
   }
-  / IfToken _ "(" _ condition:Expression _ ")" _ consequent:Statement _ alternate:ElseStatementTail {
+  / IfToken _ "(" _ condition:Expression _ ")" _ consequent:Statement _ alternate:ElseStatementTail? {
     return { type: "ConditionalStatement", condition, consequent, alternate }
   }
 
@@ -716,13 +716,29 @@ ReturnExpression
 // ----- Statements -----
 
 Statement
-  = "ConditionalStatement"
-  / Expression _ ";"
+  = IfStatement
+  / expression:Expression _ ";" {
+    return {
+      type: "ExpressionStatement",
+      expression
+    };
+  }
 
 Block
   = "{" _ body:Statement* _ "}" {
     return {
       type: "BlockStatement",
+      body
+    };
+  }
+
+
+// ----- Program -----
+
+Program
+  = body:Statement* {
+    return {
+      type: "Program",
       body
     };
   }
