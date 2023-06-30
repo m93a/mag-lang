@@ -96,6 +96,7 @@ ForToken        = @"for"                !IdentifierPart
 FunctionToken   = $("fn" / "function")  !IdentifierPart
 IfToken         = @"if"                 !IdentifierPart
 ImportToken     = @"import"             !IdentifierPart
+LetToken        = @"let"                !IdentifierPart
 MatchToken      = @"match"              !IdentifierPart
 MutToken        = @"mut"                !IdentifierPart
 OfToken         = @"of"                 !IdentifierPart
@@ -453,8 +454,9 @@ AssignmentOperator
 Expression
   = ReturnExpression
 
-// TypeExpression
-//   = ConditionalExpression
+TypeExpression
+  = IfExpression
+  / RangeExpression
 
 
 // --- Primary ---
@@ -633,6 +635,9 @@ LeftHandPattern
   = Identifier
   / LeftHandArray
   / LeftHandMember
+  / UnderscoreToken {
+    return { type: "IgnorePattern" };
+  }
 
 LeftHandArray
   = "[" _ el:LeftHandElementList? _ "]" {
@@ -717,6 +722,7 @@ ReturnExpression
 
 Statement
   = IfStatement
+  / VariableDeclaration
   / expression:Expression _ ";" {
     return {
       type: "ExpressionStatement",
@@ -732,6 +738,19 @@ Block
     };
   }
 
+VariableDeclaration
+  = kind:(LetToken / ConstToken) _ mut:MutToken? _ left:LeftHandPattern
+  typeAnnotation:(_ ":" _ @TypeExpression)?
+  right:(_ "=" _ @Expression)? _ ";" {
+    return {
+      type: "VariableDeclaration",
+      constant: kind === "const",
+      mutable: !!mut,
+      left,
+      right,
+      typeAnnotation
+    };
+  }
 
 // ----- Program -----
 

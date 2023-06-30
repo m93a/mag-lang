@@ -33,6 +33,11 @@ const n = (value: Singlet<string>, base = 10) => ({
   base,
 });
 
+const bool = (value: boolean) => ({
+  type: 'BooleanLiteral',
+  value,
+});
+
 const id = (name: Singlet<string>) => ({
   type: <const>'Identifier',
   name: unwrap(name),
@@ -84,6 +89,39 @@ const block = <T extends any[]>(...body: T) => ({
   type: 'BlockStatement',
   body,
 });
+
+const variableDeclaration = <R, S, T>(
+  left: R,
+  typeAnnotation: S | null = null,
+  right: T | null = null,
+  constant = false,
+  mutable = false
+) => ({
+  type: 'VariableDeclaration',
+  constant,
+  mutable,
+  left,
+  right,
+  typeAnnotation,
+});
+
+const letSt = <R, S, T>(
+  left: R,
+  typeAnnotation: S | null = null,
+  right: T | null = null
+) => variableDeclaration(left, typeAnnotation, right);
+
+const letMutSt = <R, S, T>(
+  left: R,
+  typeAnnotation: S | null = null,
+  right: T | null = null
+) => variableDeclaration(left, typeAnnotation, right, false, true);
+
+const constSt = <R, S, T>(
+  left: R,
+  typeAnnotation: S | null = null,
+  right: T | null = null
+) => variableDeclaration(left, typeAnnotation, right, true);
 
 // Tests
 
@@ -245,4 +283,20 @@ Deno.test('conditions', () => {
   throws(() => p`(if a { b; });`);
   throws(() => p`if a b;`);
   throws(() => p`if a b; else { c; }`);
+});
+
+Deno.test('variable declaration', () => {
+  eq(p`let x = 2;`, prog(letSt(id`x`, null, n`2`)));
+  eq(p`let x: f32;`, prog(letSt(id`x`, id`f32`)));
+  eq(p`let x: f32 = 2;`, prog(letSt(id`x`, id`f32`, n`2`)));
+
+  eq(p`let mut y = true;`, prog(letMutSt(id`y`, null, bool(true))));
+  eq(p`let mut y: boolean;`, prog(letMutSt(id`y`, id`boolean`)));
+  eq(
+    p`let mut y: boolean = true;`,
+    prog(letMutSt(id`y`, id`boolean`, bool(true)))
+  );
+
+  eq(p`const z = 5;`, prog(constSt(id`z`, null, n`5`)));
+  eq(p`const z: number = 5;`, prog(constSt(id`z`, id`number`, n`5`)));
 });
