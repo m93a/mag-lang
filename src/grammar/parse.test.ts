@@ -43,6 +43,15 @@ const id = (name: Singlet<string>) => ({
   name: unwrap(name),
 });
 
+const arr = <T extends any[]>(...elements: T) => ({
+  type: <const>'ArrayExpression',
+  elements,
+});
+const arrL = <T extends any[]>(...elements: T) => ({
+  type: <const>'ArrayPattern',
+  elements,
+});
+
 const pre = <S, T>(operator: S, argument: T) => ({
   type: <const>'UnaryExpression',
   prefix: true,
@@ -58,7 +67,7 @@ const bin = <R, S, T>(operator: R, left: S, right: T) => ({
 });
 
 const paren = <T>(expression: T) => ({
-  type: 'ParenthesizedExpression',
+  type: <const>'ParenthesizedExpression',
   expression,
 });
 
@@ -86,8 +95,15 @@ const condSt = <R, S, T>(
 });
 
 const block = <T extends any[]>(...body: T) => ({
-  type: 'BlockStatement',
+  type: <const>'BlockStatement',
   body,
+});
+
+const assign = <S, T>(left: S, right: T) => ({
+  type: <const>'AssignmentExpression',
+  operator: '=',
+  left,
+  right,
 });
 
 const variableDeclaration = <R, S, T>(
@@ -97,7 +113,7 @@ const variableDeclaration = <R, S, T>(
   constant = false,
   mutable = false
 ) => ({
-  type: 'VariableDeclaration',
+  type: <const>'VariableDeclaration',
   constant,
   mutable,
   left,
@@ -283,6 +299,22 @@ Deno.test('conditions', () => {
   throws(() => p`(if a { b; });`);
   throws(() => p`if a b;`);
   throws(() => p`if a b; else { c; }`);
+});
+
+Deno.test('assignment', () => {
+  // basic
+  eq(p`(a = b);`, prog(expr(paren(assign(id`a`, id`b`)))));
+  eq(
+    p`(x = x**2 + 4);`,
+    prog(expr(paren(assign(id`x`, bin('+', bin('**', id`x`, n`2`), n`4`)))))
+  );
+
+  // array destructuring
+  eq(p`(arr = [1, 2]);`, prog(expr(paren(assign(id`arr`, arr(n`1`, n`2`))))));
+  eq(
+    p`([a, b] = [1, 2]);`,
+    prog(expr(paren(assign(arrL(id`a`, id`b`), arr(n`1`, n`2`)))))
+  );
 });
 
 Deno.test('variable declaration', () => {

@@ -632,12 +632,12 @@ RangeExpression
 // --- Assignment ---
 
 LeftHandPattern
-  = Identifier
-  / LeftHandArray
+  = LeftHandArray
   / LeftHandMember
   / UnderscoreToken {
     return { type: "IgnorePattern" };
   }
+  / Identifier
 
 LeftHandArray
   = "[" _ el:LeftHandElementList? _ "]" {
@@ -645,7 +645,7 @@ LeftHandArray
   }
 
 LeftHandElementList
-  = head:LeftHandPattern _ "," tail:LeftHandElementList { return [head, ...tail]; }
+  = head:LeftHandPattern _ "," _ tail:LeftHandElementList { return [head, ...tail]; }
   / head:LeftHandPattern _ ","? { return [head]; }
 
 LeftHandMember
@@ -701,7 +701,8 @@ IfStatement
 // --- Return, Yield, Throw, Do ---
 
 ReturnExpression
-  = ReturnToken _ argument:ReturnExpression {
+  = AssignmentExpression
+  / ReturnToken _ argument:ReturnExpression {
     return {
       type: "ReturnExpression",
       argument
@@ -715,7 +716,6 @@ ReturnExpression
     };
   }
   / IfExpression
-  / AssignmentExpression
 
 
 // ----- Statements -----
