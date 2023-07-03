@@ -649,13 +649,7 @@ LeftHandElementList
   / head:LeftHandPattern _ ","? { return [head]; }
 
 LeftHandMember
-  = head:PrimaryExpression
-    tail:(IndexTail / FieldTail)+ {
-    return tail.reduce(
-      (inner, createOuter) => createOuter(inner),
-      head
-    )
-  }
+  = head:CallExpression
 
 AssignmentExpression
   = left:LeftHandPattern _ "=" !"=" _ right:Expression {

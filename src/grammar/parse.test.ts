@@ -43,6 +43,22 @@ const id = (name: Singlet<string>) => ({
   name: unwrap(name),
 });
 
+const field = <S, T>(object: S, field: T) => ({
+  type: <const>'FieldExpression',
+  object,
+  field,
+});
+const index = <S, T>(object: S, index: T) => ({
+  type: <const>'IndexExpression',
+  object,
+  index,
+});
+const call = <S, T extends any[]>(callee: S, args: T) => ({
+  type: <const>'CallExpression',
+  callee,
+  args,
+});
+
 const arr = <T extends any[]>(...elements: T) => ({
   type: <const>'ArrayExpression',
   elements,
@@ -303,17 +319,20 @@ Deno.test('conditions', () => {
 
 Deno.test('assignment', () => {
   // basic
-  eq(p`(a = b);`, prog(expr(paren(assign(id`a`, id`b`)))));
+  eq(p`(a = b);`, pe(paren(assign(id`a`, id`b`))));
   eq(
     p`(x = x**2 + 4);`,
-    prog(expr(paren(assign(id`x`, bin('+', bin('**', id`x`, n`2`), n`4`)))))
+    pe(paren(assign(id`x`, bin('+', bin('**', id`x`, n`2`), n`4`))))
   );
 
+  // member
+  eq(p`(a.b = c);`, pe(paren(assign(field(id`a`, id`b`), id`c`))));
+
   // array destructuring
-  eq(p`(arr = [1, 2]);`, prog(expr(paren(assign(id`arr`, arr(n`1`, n`2`))))));
+  eq(p`(arr = [1, 2]);`, pe(paren(assign(id`arr`, arr(n`1`, n`2`)))));
   eq(
     p`([a, b] = [1, 2]);`,
-    prog(expr(paren(assign(arrL(id`a`, id`b`), arr(n`1`, n`2`)))))
+    pe(paren(assign(arrL(id`a`, id`b`), arr(n`1`, n`2`))))
   );
 });
 
