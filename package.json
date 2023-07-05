@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "Peggy-based parser for the Mag programming language",
   "scripts": {
-    "build": "deno run --allow-read --allow-write src/generateParser.ts",
+    "build": "deno run -A src/generateParser.ts",
     "test": "pnpm build && deno test",
     "ast": "pnpm build && deno run src/parse.ts"
   },
