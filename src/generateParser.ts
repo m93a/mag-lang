@@ -9,10 +9,7 @@ for await (const { name, isFile } of Deno.readDir(IN_DIR)) {
 
   const grammar = await Deno.readTextFile(IN_DIR + name);
   const parser = peggy.generate(grammar, { output: 'source', format: 'es' });
-  const output = `\
-// deno-lint-ignore-file
-
-${parser}`;
+  const output = '// deno-lint-ignore-file\n\n' + parser;
 
   await Deno.writeTextFile(OUT_DIR + bareName + '.js', output);
 }
