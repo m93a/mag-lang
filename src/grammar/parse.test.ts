@@ -56,7 +56,7 @@ const index = <S, T>(object: S, index: T) => ({
 const call = <S, T extends any[]>(callee: S, args: T) => ({
   type: <const>'CallExpression',
   callee,
-  args,
+  arguments: args,
 });
 
 const arr = <T extends any[]>(...elements: T) => ({
@@ -327,6 +327,18 @@ Deno.test('assignment', () => {
 
   // member
   eq(p`(a.b = c);`, pe(paren(assign(field(id`a`, id`b`), id`c`))));
+  eq(p`(a().b = c);`, pe(paren(assign(field(call(id`a`, []), id`b`), id`c`))));
+  eq(
+    p`(a.b(c).d[e] = f);`,
+    pe(
+      paren(
+        assign(
+          index(field(call(field(id`a`, id`b`), [id`c`]), id`d`), id`e`),
+          id`f`
+        )
+      )
+    )
+  );
 
   // array destructuring
   eq(p`(arr = [1, 2]);`, pe(paren(assign(id`arr`, arr(n`1`, n`2`)))));
