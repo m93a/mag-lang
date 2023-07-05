@@ -4,162 +4,38 @@ import {
   assertEquals as eq,
   assertThrows as throws,
 } from 'https://deno.land/std@0.191.0/testing/asserts.ts';
+
 import { parse } from '../generated/mag.js';
-
-// Helper functions
-
 const p = (...args: [any, ...any]) => parse(String.raw(...args));
 
-type Singlet<T> = T | readonly T[];
-const unwrap = <T>(v: Singlet<T>) => (Array.isArray(v) ? v[0] : v);
-
-// AST builder functions
-
-const prog = <T extends any[]>(...body: T) => ({
-  type: <const>'Program',
-  body,
-});
-
-const expr = <T>(expression: T) => ({
-  type: <const>'ExpressionStatement',
-  expression,
-});
-
-const pe = <T>(e: T) => prog(expr(e));
-
-const n = (value: Singlet<string>, base = 10) => ({
-  type: <const>'NumericLiteral',
-  value: unwrap(value),
-  base,
-});
-
-const bool = (value: boolean) => ({
-  type: 'BooleanLiteral',
-  value,
-});
-
-const id = (name: Singlet<string>) => ({
-  type: <const>'Identifier',
-  name: unwrap(name),
-});
-
-const field = <S, T>(object: S, field: T) => ({
-  type: <const>'FieldExpression',
-  object,
+import {
+  arr,
+  arrL,
+  assign,
+  bin,
+  block,
+  bool,
+  call,
+  cond,
+  condSt,
+  condThen,
+  constSt,
+  expr,
   field,
-});
-const index = <S, T>(object: S, index: T) => ({
-  type: <const>'IndexExpression',
-  object,
+  id,
   index,
-});
-const call = <S, T extends any[]>(callee: S, args: T) => ({
-  type: <const>'CallExpression',
-  callee,
-  arguments: args,
-});
-
-const arr = <T extends any[]>(...elements: T) => ({
-  type: <const>'ArrayExpression',
-  elements,
-});
-const arrL = <T extends any[]>(...elements: T) => ({
-  type: <const>'ArrayPattern',
-  elements,
-});
-
-const pre = <S, T>(operator: S, argument: T) => ({
-  type: <const>'UnaryExpression',
-  prefix: true,
-  operator,
-  argument,
-});
-
-const bin = <R, S, T>(operator: R, left: S, right: T) => ({
-  type: <const>'BinaryExpression',
-  operator,
-  left,
-  right,
-});
-
-const paren = <T>(expression: T) => ({
-  type: <const>'ParenthesizedExpression',
-  expression,
-});
-
-const cond = <R, S, T>(condition: R, consequent: S, alternate: T) => ({
-  type: <const>'ConditionalExpression',
-  condition,
-  consequent,
-  alternate,
-});
-
-const condThen = <R, S, T>(a: R, b: S, c: T) => ({
-  ...cond(a, b, c),
-  explicitThen: true,
-});
-
-const condSt = <R, S, T>(
-  condition: R,
-  consequent: S,
-  alternate: T | null = null
-) => ({
-  type: <const>'ConditionalStatement',
-  condition,
-  consequent,
-  alternate,
-});
-
-const block = <T extends any[]>(...body: T) => ({
-  type: <const>'BlockStatement',
-  body,
-});
-
-const assign = <S, T>(left: S, right: T) => ({
-  type: <const>'AssignmentExpression',
-  operator: '=',
-  left,
-  right,
-});
-
-const variableDeclaration = <R, S, T>(
-  left: R,
-  typeAnnotation: S | null = null,
-  right: T | null = null,
-  constant = false,
-  mutable = false
-) => ({
-  type: <const>'VariableDeclaration',
-  constant,
-  mutable,
-  left,
-  right,
-  typeAnnotation,
-});
-
-const letSt = <R, S, T>(
-  left: R,
-  typeAnnotation: S | null = null,
-  right: T | null = null
-) => variableDeclaration(left, typeAnnotation, right);
-
-const letMutSt = <R, S, T>(
-  left: R,
-  typeAnnotation: S | null = null,
-  right: T | null = null
-) => variableDeclaration(left, typeAnnotation, right, false, true);
-
-const constSt = <R, S, T>(
-  left: R,
-  typeAnnotation: S | null = null,
-  right: T | null = null
-) => variableDeclaration(left, typeAnnotation, right, true);
-
-// Tests
+  letMutSt,
+  letSt,
+  num as n,
+  paren,
+  prefix,
+  prog,
+} from './ast.ts';
+const pe = <T>(e: T) => prog(expr(e));
 
 Deno.test('arithmetics', () => {
   // basics
-  eq(p`-a;`, pe(pre('-', id`a`)));
+  eq(p`-a;`, pe(prefix('-', id`a`)));
   eq(p`1 + 2;`, pe(bin('+', n`1`, n`2`)));
   eq(p`2 * a;`, pe(bin('*', n`2`, id`a`)));
   eq(p`b - c;`, pe(bin('-', id`b`, id`c`)));

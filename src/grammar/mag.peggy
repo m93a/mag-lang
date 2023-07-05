@@ -1,27 +1,19 @@
 {{
-  function binaryExprLeft (head, tail) {
+  import { arr, arrL, assign, bin, block, bool, call, cond, condSt, condThen, constSt, expr, field, id, index, letMutSt, letSt, num, paren, prefix, prog, regex, str, variableDeclaration } from '../grammar/ast.ts';
+
+  function binLeft (head, tail) {
     return tail.reduce(
-      (left, [operator, right]) => ({
-        type: "BinaryExpression",
-        operator,
-        left,
-        right
-      }),
+      (left, [operator, right]) => bin(operator, left, right),
       head
     )
   }
 
-  function binaryExprRight (head, tail) {
+  function binRight (head, tail) {
     const operators = tail.map(([op, _right]) => op);
     const operands = [head, ...tail.map(([_, right]) => right)];
 
     return operands.reduceRight(
-      (right, left) => ({
-        type: "BinaryExpression",
-        operator: operators.pop(),
-        left,
-        right
-      })
+      (right, left) => bin(operators.pop(), left, right)
     )
   }
 }}
@@ -157,18 +149,15 @@ ReservedWord
 
 IdentifierName "identifier"
   = head:IdentifierStart tail:IdentifierPart* {
-      return {
-        type: "Identifier",
-        name: [head, ...tail].join('')
-      };
+      return id(text());
     }
 
 Identifier
   = !ReservedWord name:IdentifierName { return name; }
 
 BooleanLiteral
-  = TrueToken  { return { type: "BooleanLiteral", value: true  }; }
-  / FalseToken { return { type: "BooleanLiteral", value: false }; }
+  = TrueToken  { return bool(true); }
+  / FalseToken { return bool(false); }
 
 BinaryDigit
   = [0-1]
@@ -218,34 +207,34 @@ DecimalExponentPart
 
 DecimalLiteral
   = [+-]? DecimalIntegerLiteral (RadixSeparator AnyDecimalDigits)? DecimalExponentPart? {
-    return { type: "NumericLiteral", value: text(), base: 10 };
+    return num(text());
   }
   / [+-]? RadixSeparator DecimalDigit AnyDecimalDigits DecimalExponentPart? {
-    return { type: "NumericLiteral", value: text(), base: 10 };
+    return num(text());
   }
 
 BinaryLiteral
   = [+-]? "0b" AnyBinaryDigits (RadixSeparator AnyBinaryDigits)? {
-    return { type: "NumericLiteral", value: text(), base: 2 };
+    return num(text(), 2);
   }
   / [+-]? "0b" RadixSeparator AnyBinaryDigits {
-    return { type: "NumericLiteral", value: text(), base: 2 };
+    return num(text(), 2);
   }
 
 OctalLiteral
   = [+-]? "0o" AnyOctalDigits (RadixSeparator AnyOctalDigits)? {
-    return { type: "NumericLiteral", value: text(), base: 8 };
+    return num(text(), 8);
   }
   / [+-]? "0o" RadixSeparator AnyOctalDigits {
-    return { type: "NumericLiteral", value: text(), base: 8 };
+    return num(text(), 8);
   }
 
 HexLiteral
   = [+-]? "0x" AnyHexDigits (RadixSeparator AnyHexDigits)? {
-    return { type: "NumericLiteral", value: text(), base: 16 };
+    return num(text(), 16);
   }
   / [+-]? "0x" RadixSeparator AnyHexDigits {
-    return { type: "NumericLiteral", value: text(), base: 16 };
+    return num(text(), 16);
   }
 
 
@@ -310,10 +299,10 @@ SingleStringCharacter
 
 StringLiteral "string"
   = '"' chars:DoubleStringCharacter* '"' {
-    return { type: "StringLiteral", value: chars.join("") };
+    return str(chars.join(""));
   }
   / "'" chars:SingleStringCharacter* "'" {
-    return { type: "StringLiteral", value: chars.join("") };
+    return str(chars.join(""));
   }
 
 RegularExpressionBody
@@ -347,7 +336,7 @@ RegularExpressionFlags
 
 RegularExpressionLiteral
   = "/" pattern:$RegularExpressionBody "/" flags:$RegularExpressionFlags {
-    return { type: "RegularExpressionLiteral", pattern, flags };
+    return regex(pattern, flags);
   }
 
 Literal
@@ -466,11 +455,11 @@ PrimaryExpression
   / Identifier
   / ThisToken { return { type: "ThisExpression" }; }
   / ArrayLiteral
-  / "(" _ expression:Expression _ ")" { return { type: "ParenthesizedExpression", expression }; }
+  / "(" _ e:Expression _ ")" { return paren(e); }
 
 ArrayLiteral
   = "[" _ el:ElementList? _ "]" {
-    return { type: "ArrayExpression", elements: el ?? [] };
+    return arr(...el ?? []);
   }
 
 ElementList
@@ -482,17 +471,17 @@ ElementList
 
 CallTail
   = _ "(" _ args: ElementList? _ ")" {
-    return callee => ({ type: "CallExpression", callee, arguments: args ?? [] });
+    return callee => call(callee, args ?? []);
   }
 
 IndexTail
-  = _ "[" _ index:Expression _ "]" {
-    return object => ({ type: "IndexExpression", object, index });
+  = _ "[" _ idx:Expression _ "]" {
+    return object => index(object, idx);
   }
 
 FieldTail
-  = _ "." _ field:IdentifierName {
-    return object => ({ type: "FieldExpression", object, field });
+  = _ "." _ prop:IdentifierName {
+    return object => field(object, prop);
   }
 
 CallExpression
@@ -528,7 +517,7 @@ UpdateExpression
 ExponentialExpression
   = head:UpdateExpression
     tail:(_ @ExponentialOperator _ @UpdateExpression)*
-    { return binaryExprRight(head, tail); }
+    { return binRight(head, tail); }
 
 
 // --- Unary ---
@@ -548,7 +537,7 @@ UnaryExpression
 MultiplicativeExpression
   = head:UnaryExpression
     tail:(_ @MultiplicativeOperator _ @UnaryExpression)*
-    { return binaryExprLeft(head, tail); }
+    { return binLeft(head, tail); }
 
 
 // --- Additive ---
@@ -556,7 +545,7 @@ MultiplicativeExpression
 AdditiveExpression
   = head:MultiplicativeExpression
     tail:(_ @AdditiveOperator _ @MultiplicativeExpression)*
-    { return binaryExprLeft(head, tail); }
+    { return binLeft(head, tail); }
 
 
 // --- Shift ---
@@ -564,7 +553,7 @@ AdditiveExpression
 ShiftExpression
   = head:AdditiveExpression
     tail:(_ @ShiftOperator _ @ShiftExpression)*
-    { return binaryExprLeft(head, tail); }
+    { return binLeft(head, tail); }
 
 
 // --- Bitwise And ---
@@ -572,7 +561,7 @@ ShiftExpression
 BitwiseAndExpression
   = head:ShiftExpression
     tail:(_ @BitwiseAndOperator _ @BitwiseAndExpression)*
-    { return binaryExprLeft(head, tail); }
+    { return binLeft(head, tail); }
 
 
 // --- Bitwise Xor ---
@@ -580,7 +569,7 @@ BitwiseAndExpression
 BitwiseXorExpression
   = head:BitwiseAndExpression
     tail:(_ @BitwiseXorOperator _ @BitwiseXorExpression)*
-    { return binaryExprLeft(head, tail); }
+    { return binLeft(head, tail); }
 
 
 // --- Bitwise Or ---
@@ -588,7 +577,7 @@ BitwiseXorExpression
 BitwiseOrExpression
   = head:BitwiseXorExpression
     tail:(_ @BitwiseOrOperator _ @BitwiseOrExpression)*
-    { return binaryExprLeft(head, tail); }
+    { return binLeft(head, tail); }
 
 
 // --- Relational, Equality ---
@@ -598,7 +587,7 @@ RelationalExpression
     if (!rest) return left;
 
     const [operator, right] = rest;
-    return { type: "BinaryExpression", operator, left, right };
+    return bin(operator, left, right);
   }
 
 
@@ -607,7 +596,7 @@ RelationalExpression
 LogicalAndExpression
   = head:RelationalExpression
     tail:(_ @LogicalAndOperator _ @LogicalAndExpression)*
-    { return binaryExprLeft(head, tail); }
+    { return binLeft(head, tail); }
 
 
 // --- Logical Or ---
@@ -615,7 +604,7 @@ LogicalAndExpression
 LogicalOrExpression
   = head:LogicalAndExpression
     tail:(_ @LogicalOrOperator _ @LogicalOrExpression)*
-    { return binaryExprLeft(head, tail); }
+    { return binLeft(head, tail); }
 
 
 // --- Range ---
@@ -625,7 +614,7 @@ RangeExpression
     if (!rest) return left;
 
     const [operator, right] = rest;
-    return { type: "BinaryExpression", operator, left, right };
+    return bin(operator, left, right);
   }
 
 
@@ -641,7 +630,7 @@ LeftHandPattern
 
 LeftHandArray
   = "[" _ el:LeftHandElementList? _ "]" {
-    return { type: "ArrayPattern", elements: el ?? [] };
+    return arrL(...el ?? []);
   }
 
 LeftHandElementList
@@ -653,11 +642,7 @@ LeftHandMember
 
 AssignmentExpression
   = left:LeftHandPattern _ "=" !"=" _ right:Expression {
-    return {
-      type: "AssignmentExpression",
-      operator: "=",
-      left, right
-    };
+    return assign(left, right);
   }
   / RangeExpression
 
@@ -674,21 +659,21 @@ ElseStatementTail
 
 IfExpression
   = IfToken _ condition:Expression _ consequent:Block _ alternate:ElseExpressionTail {
-    return { type: "ConditionalExpression", condition, consequent, alternate };
+    return cond(condition, consequent, alternate);
   }
   / IfToken _ condition:Expression _ ThenToken _ consequent:Expression _ alternate:ElseExpressionTail {
-    return { type: "ConditionalExpression", explicitThen: true, condition, consequent, alternate };
+    return condThen(condition, consequent, alternate);
   }
   / IfToken _ "(" _ condition:Expression _ ")" _ consequent:Expression _ alternate:ElseExpressionTail {
-    return { type: "ConditionalExpression", condition, consequent, alternate };
+    return cond(condition, consequent, alternate);
   }
 
 IfStatement
   = IfToken _ condition:Expression _ consequent:Block _ alternate:ElseStatementTail? {
-    return { type: "ConditionalStatement", condition, consequent, alternate };
+    return condSt(condition, consequent, alternate);
   }
   / IfToken _ "(" _ condition:Expression _ ")" _ consequent:Statement _ alternate:ElseStatementTail? {
-    return { type: "ConditionalStatement", condition, consequent, alternate }
+    return condSt(condition, consequent, alternate);
   }
 
 
@@ -717,43 +702,33 @@ ReturnExpression
 Statement
   = IfStatement
   / VariableDeclaration
-  / expression:Expression _ ";" {
-    return {
-      type: "ExpressionStatement",
-      expression
-    };
+  / e:Expression _ ";" {
+    return expr(e);
   }
 
 Block
   = "{" _ body:Statement* _ "}" {
-    return {
-      type: "BlockStatement",
-      body
-    };
+    return block(...body);
   }
 
 VariableDeclaration
   = kind:(LetToken / ConstToken) _ mut:MutToken? _ left:LeftHandPattern
   typeAnnotation:(_ ":" _ @TypeExpression)?
   right:(_ "=" _ @Expression)? _ ";" {
-    return {
-      type: "VariableDeclaration",
-      constant: kind === "const",
-      mutable: !!mut,
+    return variableDeclaration(
       left,
+      typeAnnotation,
       right,
-      typeAnnotation
-    };
+      kind === "const",
+      !!mut,
+    );
   }
 
 // ----- Program -----
 
 Program
   = body:Statement* {
-    return {
-      type: "Program",
-      body
-    };
+    return prog(...body);
   }
 
 

@@ -5,29 +5,21 @@
 // https://peggyjs.org/
 
 
-  function binaryExprLeft (head, tail) {
+  import { arr, arrL, assign, bin, block, bool, call, cond, condSt, condThen, constSt, expr, field, id, index, letMutSt, letSt, num, paren, prefix, prog, regex, str, variableDeclaration } from '../grammar/ast.ts';
+
+  function binLeft (head, tail) {
     return tail.reduce(
-      (left, [operator, right]) => ({
-        type: "BinaryExpression",
-        operator,
-        left,
-        right
-      }),
+      (left, [operator, right]) => bin(operator, left, right),
       head
     )
   }
 
-  function binaryExprRight (head, tail) {
+  function binRight (head, tail) {
     const operators = tail.map(([op, _right]) => op);
     const operands = [head, ...tail.map(([_, right]) => right)];
 
     return operands.reduceRight(
-      (right, left) => ({
-        type: "BinaryExpression",
-        operator: operators.pop(),
-        left,
-        right
-      })
+      (right, left) => bin(operators.pop(), left, right)
     )
   }
 
@@ -493,37 +485,34 @@ function peg$parse(input, options) {
 
   var peg$f0 = function(program) { return program; };
   var peg$f1 = function(head, tail) {
-      return {
-        type: "Identifier",
-        name: [head, ...tail].join('')
-      };
+      return id(text());
     };
   var peg$f2 = function(name) { return name; };
-  var peg$f3 = function() { return { type: "BooleanLiteral", value: true  }; };
-  var peg$f4 = function() { return { type: "BooleanLiteral", value: false }; };
+  var peg$f3 = function() { return bool(true); };
+  var peg$f4 = function() { return bool(false); };
   var peg$f5 = function() {
-    return { type: "NumericLiteral", value: text(), base: 10 };
+    return num(text());
   };
   var peg$f6 = function() {
-    return { type: "NumericLiteral", value: text(), base: 10 };
+    return num(text());
   };
   var peg$f7 = function() {
-    return { type: "NumericLiteral", value: text(), base: 2 };
+    return num(text(), 2);
   };
   var peg$f8 = function() {
-    return { type: "NumericLiteral", value: text(), base: 2 };
+    return num(text(), 2);
   };
   var peg$f9 = function() {
-    return { type: "NumericLiteral", value: text(), base: 8 };
+    return num(text(), 8);
   };
   var peg$f10 = function() {
-    return { type: "NumericLiteral", value: text(), base: 8 };
+    return num(text(), 8);
   };
   var peg$f11 = function() {
-    return { type: "NumericLiteral", value: text(), base: 16 };
+    return num(text(), 16);
   };
   var peg$f12 = function() {
-    return { type: "NumericLiteral", value: text(), base: 16 };
+    return num(text(), 16);
   };
   var peg$f13 = function() { return "\b"; };
   var peg$f14 = function() { return "\f"; };
@@ -545,29 +534,29 @@ function peg$parse(input, options) {
   var peg$f26 = function() { return text(); };
   var peg$f27 = function(sequence) { return sequence; };
   var peg$f28 = function(chars) {
-    return { type: "StringLiteral", value: chars.join("") };
+    return str(chars.join(""));
   };
   var peg$f29 = function(chars) {
-    return { type: "StringLiteral", value: chars.join("") };
+    return str(chars.join(""));
   };
   var peg$f30 = function(pattern, flags) {
-    return { type: "RegularExpressionLiteral", pattern, flags };
+    return regex(pattern, flags);
   };
   var peg$f31 = function() { return { type: "ThisExpression" }; };
-  var peg$f32 = function(expression) { return { type: "ParenthesizedExpression", expression }; };
+  var peg$f32 = function(e) { return paren(e); };
   var peg$f33 = function(el) {
-    return { type: "ArrayExpression", elements: el ?? [] };
+    return arr(...el ?? []);
   };
   var peg$f34 = function(head, tail) { return [head, ...tail]; };
   var peg$f35 = function(head) { return [head]; };
   var peg$f36 = function(args) {
-    return callee => ({ type: "CallExpression", callee, arguments: args ?? [] });
+    return callee => call(callee, args ?? []);
   };
-  var peg$f37 = function(index) {
-    return object => ({ type: "IndexExpression", object, index });
+  var peg$f37 = function(idx) {
+    return object => index(object, idx);
   };
-  var peg$f38 = function(field) {
-    return object => ({ type: "FieldExpression", object, field });
+  var peg$f38 = function(prop) {
+    return object => field(object, prop);
   };
   var peg$f39 = function(head, tail) {
     return tail.reduce(
@@ -581,62 +570,58 @@ function peg$parse(input, options) {
   var peg$f41 = function(argument, operator) {
     return { type: "UpdateExpression", operator, argument, prefix: false };
   };
-  var peg$f42 = function(head, tail) { return binaryExprRight(head, tail); };
+  var peg$f42 = function(head, tail) { return binRight(head, tail); };
   var peg$f43 = function(operator, argument) {
     return { type: "UnaryExpression", operator, argument, prefix: true };
   };
   var peg$f44 = function(argument) {
     return { type: "TypeOfExpression", argument }
   };
-  var peg$f45 = function(head, tail) { return binaryExprLeft(head, tail); };
-  var peg$f46 = function(head, tail) { return binaryExprLeft(head, tail); };
-  var peg$f47 = function(head, tail) { return binaryExprLeft(head, tail); };
-  var peg$f48 = function(head, tail) { return binaryExprLeft(head, tail); };
-  var peg$f49 = function(head, tail) { return binaryExprLeft(head, tail); };
-  var peg$f50 = function(head, tail) { return binaryExprLeft(head, tail); };
+  var peg$f45 = function(head, tail) { return binLeft(head, tail); };
+  var peg$f46 = function(head, tail) { return binLeft(head, tail); };
+  var peg$f47 = function(head, tail) { return binLeft(head, tail); };
+  var peg$f48 = function(head, tail) { return binLeft(head, tail); };
+  var peg$f49 = function(head, tail) { return binLeft(head, tail); };
+  var peg$f50 = function(head, tail) { return binLeft(head, tail); };
   var peg$f51 = function(left, rest) {
     if (!rest) return left;
 
     const [operator, right] = rest;
-    return { type: "BinaryExpression", operator, left, right };
+    return bin(operator, left, right);
   };
-  var peg$f52 = function(head, tail) { return binaryExprLeft(head, tail); };
-  var peg$f53 = function(head, tail) { return binaryExprLeft(head, tail); };
+  var peg$f52 = function(head, tail) { return binLeft(head, tail); };
+  var peg$f53 = function(head, tail) { return binLeft(head, tail); };
   var peg$f54 = function(left, rest) {
     if (!rest) return left;
 
     const [operator, right] = rest;
-    return { type: "BinaryExpression", operator, left, right };
+    return bin(operator, left, right);
   };
   var peg$f55 = function() {
     return { type: "IgnorePattern" };
   };
   var peg$f56 = function(el) {
-    return { type: "ArrayPattern", elements: el ?? [] };
+    return arrL(...el ?? []);
   };
   var peg$f57 = function(head, tail) { return [head, ...tail]; };
   var peg$f58 = function(head) { return [head]; };
   var peg$f59 = function(left, right) {
-    return {
-      type: "AssignmentExpression",
-      operator: "=",
-      left, right
-    };
+    return assign(left, right);
   };
   var peg$f60 = function(condition, consequent, alternate) {
-    return { type: "ConditionalExpression", condition, consequent, alternate };
+    return cond(condition, consequent, alternate);
   };
   var peg$f61 = function(condition, consequent, alternate) {
-    return { type: "ConditionalExpression", explicitThen: true, condition, consequent, alternate };
+    return condThen(condition, consequent, alternate);
   };
   var peg$f62 = function(condition, consequent, alternate) {
-    return { type: "ConditionalExpression", condition, consequent, alternate };
+    return cond(condition, consequent, alternate);
   };
   var peg$f63 = function(condition, consequent, alternate) {
-    return { type: "ConditionalStatement", condition, consequent, alternate };
+    return condSt(condition, consequent, alternate);
   };
   var peg$f64 = function(condition, consequent, alternate) {
-    return { type: "ConditionalStatement", condition, consequent, alternate }
+    return condSt(condition, consequent, alternate);
   };
   var peg$f65 = function(argument) {
     return {
@@ -651,33 +636,23 @@ function peg$parse(input, options) {
       argument
     };
   };
-  var peg$f67 = function(expression) {
-    return {
-      type: "ExpressionStatement",
-      expression
-    };
+  var peg$f67 = function(e) {
+    return expr(e);
   };
   var peg$f68 = function(body) {
-    return {
-      type: "BlockStatement",
-      body
-    };
+    return block(...body);
   };
   var peg$f69 = function(kind, mut, left, typeAnnotation, right) {
-    return {
-      type: "VariableDeclaration",
-      constant: kind === "const",
-      mutable: !!mut,
+    return variableDeclaration(
       left,
+      typeAnnotation,
       right,
-      typeAnnotation
-    };
+      kind === "const",
+      !!mut,
+    );
   };
   var peg$f70 = function(body) {
-    return {
-      type: "Program",
-      body
-    };
+    return prog(...body);
   };
   var peg$currPos = 0;
   var peg$savedPos = 0;
